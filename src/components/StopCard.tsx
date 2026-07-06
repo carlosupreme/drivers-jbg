@@ -5,18 +5,21 @@ import { StopStatusBadge } from '#/components/RouteStatusBadge'
 import { useRouteActions } from '#/hooks/useActiveRoute'
 import {
   MAX_DELIVERY_ATTEMPTS,
+  ROUTE_TYPE_COPY,
   formatStopAddress,
 } from '#/domain/route'
 import type {
   DeliveryOutcome,
   RoutePrimitives,
   RouteStopPrimitives,
+  RouteType,
 } from '#/domain/route'
 
 interface StopCardProps {
   stop: RouteStopPrimitives
   routeId: string
   routeStatus: RoutePrimitives['status']
+  routeType: RouteType
 }
 
 function getCurrentPosition(): Promise<GeolocationPosition> {
@@ -42,7 +45,9 @@ export default function StopCard({
   stop,
   routeId,
   routeStatus,
+  routeType,
 }: StopCardProps) {
+  const copy = ROUTE_TYPE_COPY[routeType]
   const { recordAttempt } = useRouteActions()
   const [formOpen, setFormOpen] = useState(false)
   const [outcome, setOutcome] = useState<DeliveryOutcome>('DELIVERED')
@@ -119,6 +124,7 @@ export default function StopCard({
               {stop.stopOrder}
             </span>
             <div>
+              <p className="text-muted-foreground text-xs">{copy.addressHint}:</p>
               <p className="text-sm font-medium leading-snug">
                 {formatStopAddress(stop.address) || 'Dirección no disponible'}
               </p>
@@ -145,7 +151,7 @@ export default function StopCard({
             onClick={() => setFormOpen(true)}
             className="bg-primary text-primary-foreground h-10 rounded-md text-sm font-semibold"
           >
-            Registrar entrega
+            {copy.stopAction}
           </button>
         )}
 
@@ -156,7 +162,7 @@ export default function StopCard({
           >
             <div className="grid grid-cols-2 gap-2">
               <OutcomeOption
-                label="Entregado"
+                label={copy.successLabel}
                 selected={outcome === 'DELIVERED'}
                 onSelect={() => setOutcome('DELIVERED')}
               />

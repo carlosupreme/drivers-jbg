@@ -55,8 +55,17 @@ export const routeStatuses = [
   'CANCELLED',
 ] as const
 
+/**
+ * DELIVERY — entregar paquetes al destinatario.
+ * PICKING  — recolectar paquetes en el domicilio del remitente.
+ * BOX_DROP — dejar cajas vacías en el domicilio del remitente.
+ */
+export const routeTypes = ['DELIVERY', 'PICKING', 'BOX_DROP'] as const
+
 export const routeSchema = z.object({
   id: z.string(),
+  // Rutas creadas antes del feature de tipos no traen el campo
+  type: z.enum(routeTypes).optional().default('DELIVERY'),
   origin: geolocationSchema,
   driverId: z.string(),
   stops: z.array(routeStopSchema),
@@ -71,7 +80,42 @@ export type DeliveryAttemptPrimitives = z.infer<typeof deliveryAttemptSchema>
 export type RouteStopStatus = (typeof routeStopStatuses)[number]
 export type RouteStopPrimitives = z.infer<typeof routeStopSchema>
 export type RouteStatus = (typeof routeStatuses)[number]
+export type RouteType = (typeof routeTypes)[number]
 export type RoutePrimitives = z.infer<typeof routeSchema>
+
+/** Textos por tipo de ruta: qué hace el conductor en cada parada. */
+export const ROUTE_TYPE_COPY: Record<
+  RouteType,
+  {
+    title: string
+    stopsDone: string
+    stopAction: string
+    successLabel: string
+    addressHint: string
+  }
+> = {
+  DELIVERY: {
+    title: 'Ruta de entregas',
+    stopsDone: 'entregadas',
+    stopAction: 'Registrar entrega',
+    successLabel: 'Entregado',
+    addressHint: 'Entregar en',
+  },
+  PICKING: {
+    title: 'Ruta de recolección',
+    stopsDone: 'recolectadas',
+    stopAction: 'Registrar recolección',
+    successLabel: 'Recolectado',
+    addressHint: 'Recolectar en',
+  },
+  BOX_DROP: {
+    title: 'Ruta de cajas vacías',
+    stopsDone: 'entregadas',
+    stopAction: 'Registrar entrega de caja',
+    successLabel: 'Caja entregada',
+    addressHint: 'Dejar caja en',
+  },
+}
 
 export function formatStopAddress(address: StopAddressPrimitives): string {
   return [address.address1, address.address2, address.city, address.province]

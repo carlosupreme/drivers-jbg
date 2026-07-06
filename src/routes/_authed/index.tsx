@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 import StopCard from '#/components/StopCard'
 import RouteStatusBadge from '#/components/RouteStatusBadge'
 import { useActiveRoute, useRouteActions } from '#/hooks/useActiveRoute'
+import { ROUTE_TYPE_COPY } from '#/domain/route'
 import type { RoutePrimitives } from '#/domain/route'
 
 export const Route = createFileRoute('/_authed/')({
@@ -82,17 +83,18 @@ function ActiveRoutePage() {
     (stop) => stop.status === 'DELIVERED',
   ).length
   const mapsUrl = buildGoogleMapsUrl(route)
+  const copy = ROUTE_TYPE_COPY[route.type]
 
   return (
     <div className="flex flex-col gap-4">
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-lg">Ruta del día</CardTitle>
+          <CardTitle className="text-lg">{copy.title}</CardTitle>
           <RouteStatusBadge status={route.status} />
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="text-muted-foreground text-sm">
-            {deliveredCount} de {sortedStops.length} paradas entregadas ·{' '}
+            {deliveredCount} de {sortedStops.length} paradas {copy.stopsDone} ·{' '}
             {pendingCount} pendientes
           </p>
 
@@ -151,6 +153,7 @@ function ActiveRoutePage() {
             stop={stop}
             routeId={route.id}
             routeStatus={route.status}
+            routeType={route.type}
           />
         ))}
       </section>
