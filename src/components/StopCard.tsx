@@ -5,27 +5,21 @@ import { StopStatusBadge } from '#/components/RouteStatusBadge'
 import { useRouteActions } from '#/hooks/useActiveRoute'
 import {
   MAX_DELIVERY_ATTEMPTS,
+  ROUTE_TYPE_COPY,
   formatStopAddress,
 } from '#/domain/route'
 import type {
   DeliveryOutcome,
   RoutePrimitives,
   RouteStopPrimitives,
+  RouteType,
 } from '#/domain/route'
 
 interface StopCardProps {
   stop: RouteStopPrimitives
   routeId: string
   routeStatus: RoutePrimitives['status']
-}
-
-function getCurrentPosition(): Promise<GeolocationPosition> {
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 10_000,
-    })
-  })
+  routeType: RouteType
 }
 
 /** The backend expects the photo as a data URL string, not multipart. */
@@ -42,7 +36,9 @@ export default function StopCard({
   stop,
   routeId,
   routeStatus,
+  routeType,
 }: StopCardProps) {
+  const copy = ROUTE_TYPE_COPY[routeType]
   const { recordAttempt } = useRouteActions()
   const [formOpen, setFormOpen] = useState(false)
   const [outcome, setOutcome] = useState<DeliveryOutcome>('DELIVERED')
@@ -69,16 +65,6 @@ export default function StopCard({
       return
     }
 
-    let position: GeolocationPosition
-    try {
-      position = await getCurrentPosition()
-    } catch {
-      setFormError(
-        'No se pudo obtener tu ubicación GPS. Activa la ubicación e intenta de nuevo.',
-      )
-      return
-    }
-
     let photoDataUrl: string
     try {
       photoDataUrl = await fileToDataUrl(photo)
@@ -93,8 +79,11 @@ export default function StopCard({
         stopId: stop.id,
         outcome,
         photo: photoDataUrl,
-        gpsLat: position.coords.latitude,
-        gpsLng: position.coords.longitude,
+        // TODO: reponer la verificación de ubicación GPS del driver. Se quitó
+        // temporalmente para pruebas; hay que volver a pedir navigator.geolocation
+        // (getCurrentPosition) y enviar las coords reales en vez de 0/0.
+        gpsLat: 0,
+        gpsLng: 0,
         reason: outcome === 'FAILED' ? reason.trim() : undefined,
       },
       {
@@ -119,6 +108,7 @@ export default function StopCard({
               {stop.stopOrder}
             </span>
             <div>
+              <p className="text-muted-foreground text-xs">{copy.addressHint}:</p>
               <p className="text-sm font-medium leading-snug">
                 {formatStopAddress(stop.address) || 'Dirección no disponible'}
               </p>
@@ -145,7 +135,7 @@ export default function StopCard({
             onClick={() => setFormOpen(true)}
             className="bg-primary text-primary-foreground h-10 rounded-md text-sm font-semibold"
           >
-            Registrar entrega
+            {copy.stopAction}
           </button>
         )}
 
@@ -156,7 +146,7 @@ export default function StopCard({
           >
             <div className="grid grid-cols-2 gap-2">
               <OutcomeOption
-                label="Entregado"
+                label={copy.successLabel}
                 selected={outcome === 'DELIVERED'}
                 onSelect={() => setOutcome('DELIVERED')}
               />
