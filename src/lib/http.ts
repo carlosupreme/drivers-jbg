@@ -54,11 +54,19 @@ export async function apiFetch<T>(
     payload = JSON.stringify(body)
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: payload,
-  })
+  let response: Response
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: payload,
+    })
+  } catch (error) {
+    // Network-level failure (connection refused, CORS, offline). Without this
+    // the request just hangs from the caller's perspective.
+    console.error(`[apiFetch] network error on ${method} ${path}`, error)
+    throw error
+  }
 
   if (response.status === 401) {
     tokenStorage.clear()
@@ -67,6 +75,10 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const text = await response.text().catch(() => '')
+    console.error(
+      `[apiFetch] ${method} ${path} failed with ${response.status}`,
+      text || response.statusText,
+    )
     throw new ApiError(response.status, text || response.statusText)
   }
 
