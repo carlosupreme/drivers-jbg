@@ -92,8 +92,18 @@ export default function StopCard({
           setPhoto(null)
           setReason('')
         },
-        onError: () => {
-          setFormError('No se pudo registrar el intento. Intenta de nuevo.')
+        onError: (error) => {
+          console.error('[StopCard] recordAttempt failed', {
+            routeId,
+            stopId: stop.id,
+            outcome,
+            error,
+          })
+          setFormError(
+            error instanceof Error
+              ? `No se pudo registrar el intento: ${error.message}`
+              : 'No se pudo registrar el intento. Intenta de nuevo.',
+          )
         },
       },
     )
