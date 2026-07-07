@@ -22,15 +22,6 @@ interface StopCardProps {
   routeType: RouteType
 }
 
-function getCurrentPosition(): Promise<GeolocationPosition> {
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 10_000,
-    })
-  })
-}
-
 /** The backend expects the photo as a data URL string, not multipart. */
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -74,16 +65,6 @@ export default function StopCard({
       return
     }
 
-    let position: GeolocationPosition
-    try {
-      position = await getCurrentPosition()
-    } catch {
-      setFormError(
-        'No se pudo obtener tu ubicación GPS. Activa la ubicación e intenta de nuevo.',
-      )
-      return
-    }
-
     let photoDataUrl: string
     try {
       photoDataUrl = await fileToDataUrl(photo)
@@ -98,8 +79,11 @@ export default function StopCard({
         stopId: stop.id,
         outcome,
         photo: photoDataUrl,
-        gpsLat: position.coords.latitude,
-        gpsLng: position.coords.longitude,
+        // TODO: reponer la verificación de ubicación GPS del driver. Se quitó
+        // temporalmente para pruebas; hay que volver a pedir navigator.geolocation
+        // (getCurrentPosition) y enviar las coords reales en vez de 0/0.
+        gpsLat: 0,
+        gpsLng: 0,
         reason: outcome === 'FAILED' ? reason.trim() : undefined,
       },
       {
