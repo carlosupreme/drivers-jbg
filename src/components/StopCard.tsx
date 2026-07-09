@@ -3,6 +3,7 @@ import { Camera, MapPin } from 'lucide-react'
 import { Card, CardContent } from '#/components/ui/card'
 import { StopStatusBadge } from '#/components/RouteStatusBadge'
 import { useRouteActions } from '#/hooks/useActiveRoute'
+import { ApiError } from '#/lib/http'
 import {
   MAX_DELIVERY_ATTEMPTS,
   ROUTE_TYPE_COPY,
@@ -47,9 +48,12 @@ export default function StopCard({
   const [formError, setFormError] = useState<string | null>(null)
 
   const attemptsUsed = stop.attempts.length
+  // Terminal statuses (mirrors backend RouteStop.isTerminal) are DELIVERED and
+  // RETURNED — FAILED still has attempts left and must remain retriable.
+  const isTerminal = stop.status === 'DELIVERED' || stop.status === 'RETURNED'
   const canAttempt =
     routeStatus === 'ACTIVE' &&
-    stop.status === 'PENDING' &&
+    !isTerminal &&
     attemptsUsed < MAX_DELIVERY_ATTEMPTS
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -100,8 +104,8 @@ export default function StopCard({
             error,
           })
           setFormError(
-            error instanceof Error
-              ? `No se pudo registrar el intento: ${error.message}`
+            error instanceof ApiError
+              ? error.message
               : 'No se pudo registrar el intento. Intenta de nuevo.',
           )
         },

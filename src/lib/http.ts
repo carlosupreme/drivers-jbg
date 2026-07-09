@@ -75,11 +75,18 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const text = await response.text().catch(() => '')
+    let message = text || response.statusText
+    try {
+      const parsed = text ? JSON.parse(text) : null
+      if (parsed && typeof parsed.error === 'string') message = parsed.error
+    } catch {
+      // Body wasn't JSON — fall back to the raw text/status text above.
+    }
     console.error(
       `[apiFetch] ${method} ${path} failed with ${response.status}`,
-      text || response.statusText,
+      message,
     )
-    throw new ApiError(response.status, text || response.statusText)
+    throw new ApiError(response.status, message)
   }
 
   if (response.status === 204) return undefined as T

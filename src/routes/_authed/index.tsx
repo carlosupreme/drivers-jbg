@@ -5,15 +5,28 @@ import StopCard from '#/components/StopCard'
 import RouteStatusBadge from '#/components/RouteStatusBadge'
 import { useActiveRoute, useRouteActions } from '#/hooks/useActiveRoute'
 import { ROUTE_TYPE_COPY } from '#/domain/route'
+import { ApiError } from '#/lib/http'
 import type { RoutePrimitives } from '#/domain/route'
 
 export const Route = createFileRoute('/_authed/')({
   component: ActiveRoutePage,
 })
 
+// Mirrors backend RouteStop.isTerminal: only DELIVERED/RETURNED are done —
+// FAILED still needs a retry, so it must still count as unresolved.
+function isUnresolved(status: RoutePrimitives['stops'][number]['status']): boolean {
+  return status === 'PENDING' || status === 'FAILED'
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof ApiError
+    ? error.message
+    : 'La operación falló. Intenta de nuevo.'
+}
+
 function buildGoogleMapsUrl(route: RoutePrimitives): string | null {
   const pendingStops = route.stops
-    .filter((stop) => stop.status === 'PENDING')
+    .filter((stop) => isUnresolved(stop.status))
     .sort((a, b) => a.stopOrder - b.stopOrder)
 
   const coords = pendingStops
@@ -79,6 +92,9 @@ function ActiveRoutePage() {
   const pendingCount = sortedStops.filter(
     (stop) => stop.status === 'PENDING',
   ).length
+  const unresolvedCount = sortedStops.filter((stop) =>
+    isUnresolved(stop.status),
+  ).length
   const deliveredCount = sortedStops.filter(
     (stop) => stop.status === 'DELIVERED',
   ).length
@@ -122,7 +138,7 @@ function ActiveRoutePage() {
               </a>
             )}
 
-            {route.status === 'ACTIVE' && pendingCount === 0 && (
+            {route.status === 'ACTIVE' && unresolvedCount === 0 && (
               <button
                 type="button"
                 disabled={completeRoute.isPending}
@@ -137,7 +153,7 @@ function ActiveRoutePage() {
 
           {(startRoute.isError || completeRoute.isError) && (
             <p className="text-destructive text-sm" role="alert">
-              La operación falló. Intenta de nuevo.
+              {getErrorMessage(startRoute.error ?? completeRoute.error)}
             </p>
           )}
         </CardContent>
