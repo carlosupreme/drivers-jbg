@@ -26,6 +26,7 @@ export const deliveryAttemptSchema = z.object({
   outcome: z.enum(deliveryOutcomes),
   reason: z.string().nullish(),
   photoPath: z.string().nullish(),
+  signaturePath: z.string().nullish(),
   gpsLocation: geolocationSchema.nullish(),
   driverId: z.string(),
   clientTimestamp: z.string(),

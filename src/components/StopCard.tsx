@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Camera, MapPin } from 'lucide-react'
 import { Card, CardContent } from '#/components/ui/card'
 import { StopStatusBadge } from '#/components/RouteStatusBadge'
+import { SignaturePad } from '#/components/SignaturePad'
 import { useRouteActions } from '#/hooks/useActiveRoute'
 import { ApiError } from '#/lib/http'
 import {
@@ -45,6 +46,7 @@ export default function StopCard({
   const [outcome, setOutcome] = useState<DeliveryOutcome>('DELIVERED')
   const [reason, setReason] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
+  const [signature, setSignature] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   const attemptsUsed = stop.attempts.length
@@ -68,6 +70,10 @@ export default function StopCard({
       setFormError('Indica el motivo del intento fallido.')
       return
     }
+    if (outcome === 'DELIVERED' && !signature) {
+      setFormError('La firma del cliente es obligatoria.')
+      return
+    }
 
     let photoDataUrl: string
     try {
@@ -83,6 +89,7 @@ export default function StopCard({
         stopId: stop.id,
         outcome,
         photo: photoDataUrl,
+        signature: outcome === 'DELIVERED' ? (signature ?? undefined) : undefined,
         // TODO: reponer la verificación de ubicación GPS del driver. Se quitó
         // temporalmente para pruebas; hay que volver a pedir navigator.geolocation
         // (getCurrentPosition) y enviar las coords reales en vez de 0/0.
@@ -95,6 +102,7 @@ export default function StopCard({
           setFormOpen(false)
           setPhoto(null)
           setReason('')
+          setSignature(null)
         },
         onError: (error) => {
           console.error('[StopCard] recordAttempt failed', {
@@ -168,7 +176,10 @@ export default function StopCard({
                 label="Fallido"
                 selected={outcome === 'FAILED'}
                 destructive
-                onSelect={() => setOutcome('FAILED')}
+                onSelect={() => {
+                  setOutcome('FAILED')
+                  setSignature(null)
+                }}
               />
             </div>
 
@@ -183,6 +194,13 @@ export default function StopCard({
                   className="border-input bg-background h-10 rounded-md border px-3 text-base font-normal"
                 />
               </label>
+            )}
+
+            {outcome === 'DELIVERED' && (
+              <div className="flex flex-col gap-1.5 text-sm font-medium">
+                Firma del cliente
+                <SignaturePad hasValue={!!signature} onChange={setSignature} />
+              </div>
             )}
 
             <label className="border-input text-muted-foreground flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed text-sm">

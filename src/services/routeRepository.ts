@@ -8,6 +8,8 @@ export interface RecordAttemptInput {
   outcome: DeliveryOutcome
   /** Data URL (`data:image/...;base64,...`) — the backend decodes and stores it. */
   photo: string
+  /** Customer's signature (data URL) — required when outcome is DELIVERED. */
+  signature?: string
   gpsLat: number
   gpsLng: number
   reason?: string
