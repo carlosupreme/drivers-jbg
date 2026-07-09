@@ -3,10 +3,12 @@ import { useEffect, useRef } from 'react'
 interface SignaturePadProps {
   hasValue: boolean
   onChange: (dataUrl: string | null) => void
+  /** Placeholder shown in the empty pad — varies by route type. */
+  prompt: string
 }
 
 /** Freehand signature capture on a canvas — works with touch, pen, and mouse via Pointer Events. */
-export function SignaturePad({ hasValue, onChange }: SignaturePadProps) {
+export function SignaturePad({ hasValue, onChange, prompt }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const drawingRef = useRef(false)
   const hasDrawnRef = useRef(false)
@@ -81,7 +83,7 @@ export function SignaturePad({ hasValue, onChange }: SignaturePadProps) {
       />
       <div className="flex items-center justify-between">
         <span className="text-muted-foreground text-xs">
-          {hasValue ? 'Firma capturada' : 'Pide al cliente que firme aquí'}
+          {hasValue ? 'Firma capturada' : prompt}
         </span>
         <button
           type="button"

@@ -71,7 +71,7 @@ export default function StopCard({
       return
     }
     if (outcome === 'DELIVERED' && !signature) {
-      setFormError('La firma del cliente es obligatoria.')
+      setFormError('La firma es obligatoria.')
       return
     }
 
@@ -198,8 +198,12 @@ export default function StopCard({
 
             {outcome === 'DELIVERED' && (
               <div className="flex flex-col gap-1.5 text-sm font-medium">
-                Firma del cliente
-                <SignaturePad hasValue={!!signature} onChange={setSignature} />
+                {copy.signatureLabel}
+                <SignaturePad
+                  hasValue={!!signature}
+                  onChange={setSignature}
+                  prompt={copy.signaturePrompt}
+                />
               </div>
             )}
 

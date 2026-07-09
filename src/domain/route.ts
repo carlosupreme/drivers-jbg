@@ -93,6 +93,10 @@ export const ROUTE_TYPE_COPY: Record<
     stopAction: string
     successLabel: string
     addressHint: string
+    /** Label shown above the signature pad on a successful attempt. */
+    signatureLabel: string
+    /** Placeholder inside the empty signature pad. */
+    signaturePrompt: string
   }
 > = {
   DELIVERY: {
@@ -101,6 +105,8 @@ export const ROUTE_TYPE_COPY: Record<
     stopAction: 'Registrar entrega',
     successLabel: 'Entregado',
     addressHint: 'Entregar en',
+    signatureLabel: 'Firma de quien recibe',
+    signaturePrompt: 'Pide al destinatario que firme aquí',
   },
   PICKING: {
     title: 'Ruta de recolección',
@@ -108,6 +114,8 @@ export const ROUTE_TYPE_COPY: Record<
     stopAction: 'Registrar recolección',
     successLabel: 'Recolectado',
     addressHint: 'Recolectar en',
+    signatureLabel: 'Firma de quien entrega el paquete',
+    signaturePrompt: 'Pide al remitente que firme aquí',
   },
   BOX_DROP: {
     title: 'Ruta de cajas vacías',
@@ -115,6 +123,8 @@ export const ROUTE_TYPE_COPY: Record<
     stopAction: 'Registrar entrega de caja',
     successLabel: 'Caja entregada',
     addressHint: 'Dejar caja en',
+    signatureLabel: 'Firma de quien recibe la caja',
+    signaturePrompt: 'Pide al remitente que firme aquí',
   },
 }
 
