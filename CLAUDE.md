@@ -21,7 +21,7 @@ Gestor de paquetes: **pnpm**. Dev en puerto **3001** (el backend ocupa el 3000).
 
 - `GET /driver/me/route/active` — ruta PLANNED/ACTIVE asignada (responde `200` con `null` si no hay ruta)
 - `POST /route/:routeId/start` — sin body, responde 204
-- `POST /route/:routeId/stop/:stopId/attempt` — **JSON**: `outcome` (DELIVERED|FAILED), `photo` (data URL base64 — el backend lo decodifica y guarda vía MediaStorage), `gpsLat`, `gpsLng`, `clientTimestamp` (ISO, máx. 24h de antigüedad), `reason?` — máx. 3 intentos por parada
+- `POST /route/:routeId/stop/:stopId/attempt` — **multipart/form-data** (no JSON — evita bloquear el event loop parseando fotos grandes como base64): `outcome` (DELIVERED|FAILED), `photo` (archivo, se comprime a JPEG ≤1600px en el cliente antes de subir), `signature?` (archivo PNG, requerido si DELIVERED), `gpsLat`, `gpsLng`, `clientTimestamp` (ISO, máx. 24h de antigüedad), `reason?` — máx. 3 intentos por parada, límite de archivo 20MB
 - `POST /route/:routeId/complete` — sin body, responde 204
 
 ## Pendiente

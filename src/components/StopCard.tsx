@@ -24,14 +24,53 @@ interface StopCardProps {
   routeType: RouteType
 }
 
-/** The backend expects the photo as a data URL string, not multipart. */
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error('No se pudo leer la foto'))
-    reader.readAsDataURL(file)
-  })
+const MAX_PHOTO_DIMENSION = 1600
+const PHOTO_JPEG_QUALITY = 0.75
+
+/**
+ * Downscales and re-encodes the captured photo as JPEG before upload.
+ * Modern phone cameras produce 8-15MB photos — uploading those raw is what
+ * made the app hang (encoding to base64 on the main thread) and made the
+ * endpoint slow (multi-MB request body). Falls back to the original file if
+ * the browser can't decode/re-encode it, so a compression hiccup never
+ * blocks a delivery confirmation.
+ */
+async function compressPhoto(file: File): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(
+      1,
+      MAX_PHOTO_DIMENSION / Math.max(bitmap.width, bitmap.height),
+    )
+    const width = Math.round(bitmap.width * scale)
+    const height = Math.round(bitmap.height * scale)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Canvas no soportado')
+    ctx.drawImage(bitmap, 0, 0, width, height)
+    bitmap.close()
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', PHOTO_JPEG_QUALITY),
+    )
+    return blob ?? file
+  } catch {
+    return file
+  }
+}
+
+/** SignaturePad emits a small PNG data URL — converted to a Blob for the
+ * multipart upload. */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',')
+  const mime = /data:(.*);base64/.exec(header)?.[1] ?? 'image/png'
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return new Blob([bytes], { type: mime })
 }
 
 export default function StopCard({
@@ -75,21 +114,18 @@ export default function StopCard({
       return
     }
 
-    let photoDataUrl: string
-    try {
-      photoDataUrl = await fileToDataUrl(photo)
-    } catch {
-      setFormError('No se pudo procesar la foto. Intenta tomarla de nuevo.')
-      return
-    }
+    const photoBlob = await compressPhoto(photo)
 
     recordAttempt.mutate(
       {
         routeId,
         stopId: stop.id,
         outcome,
-        photo: photoDataUrl,
-        signature: outcome === 'DELIVERED' ? (signature ?? undefined) : undefined,
+        photo: photoBlob,
+        signature:
+          outcome === 'DELIVERED' && signature
+            ? dataUrlToBlob(signature)
+            : undefined,
         // TODO: reponer la verificación de ubicación GPS del driver. Se quitó
         // temporalmente para pruebas; hay que volver a pedir navigator.geolocation
         // (getCurrentPosition) y enviar las coords reales en vez de 0/0.

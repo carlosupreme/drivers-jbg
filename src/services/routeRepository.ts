@@ -6,10 +6,10 @@ export interface RecordAttemptInput {
   routeId: string
   stopId: string
   outcome: DeliveryOutcome
-  /** Data URL (`data:image/...;base64,...`) — the backend decodes and stores it. */
-  photo: string
-  /** Customer's signature (data URL) — required when outcome is DELIVERED. */
-  signature?: string
+  /** Compressed JPEG blob — sent as multipart/form-data, not base64 JSON. */
+  photo: Blob
+  /** Customer's signature blob — required when outcome is DELIVERED. */
+  signature?: Blob
   gpsLat: number
   gpsLng: number
   reason?: string
@@ -36,15 +36,24 @@ export const routeRepository = {
     await apiFetch(`/route/${routeId}/complete`, { method: 'POST' })
   },
 
+  /** Sent as multipart/form-data so large photos stream straight to disk
+   * instead of getting base64-encoded into one big JSON string, which used
+   * to block the server while it parsed the request body. */
   async recordAttempt(input: RecordAttemptInput): Promise<void> {
-    const { routeId, stopId, ...attempt } = input
+    const { routeId, stopId, photo, signature, ...fields } = input
+
+    const formData = new FormData()
+    formData.append('photo', photo, 'evidence.jpg')
+    if (signature) formData.append('signature', signature, 'signature.png')
+    formData.append('outcome', fields.outcome)
+    formData.append('gpsLat', String(fields.gpsLat))
+    formData.append('gpsLng', String(fields.gpsLng))
+    formData.append('clientTimestamp', new Date().toISOString())
+    if (fields.reason) formData.append('reason', fields.reason)
 
     await apiFetch(`/route/${routeId}/stop/${stopId}/attempt`, {
       method: 'POST',
-      body: {
-        ...attempt,
-        clientTimestamp: new Date().toISOString(),
-      },
+      body: formData,
     })
   },
 
