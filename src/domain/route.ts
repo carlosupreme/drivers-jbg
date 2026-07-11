@@ -128,6 +128,12 @@ export const ROUTE_TYPE_COPY: Record<
   },
 }
 
+/** Mirrors backend RouteStop.isTerminal: only DELIVERED/RETURNED are done —
+ * FAILED still needs a retry, so it must still count as unresolved. */
+export function isStopUnresolved(status: RouteStopStatus): boolean {
+  return status === 'PENDING' || status === 'FAILED'
+}
+
 export function formatStopAddress(address: StopAddressPrimitives): string {
   return [address.address1, address.address2, address.city, address.province]
     .filter(Boolean)

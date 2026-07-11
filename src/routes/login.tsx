@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
-import { Truck } from 'lucide-react'
+import { Eye, EyeOff, Truck } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 import { loginRequestSchema } from '#/domain/auth'
 import { useLogin } from '#/hooks/useAuth'
@@ -20,6 +20,7 @@ function LoginPage() {
   const login = useLogin()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -67,13 +68,29 @@ function LoginPage() {
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-medium">
               Contraseña
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-base font-normal outline-none focus-visible:ring-2"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="border-input bg-background focus-visible:ring-ring h-10 w-full rounded-md border px-3 pr-10 text-base font-normal outline-none focus-visible:ring-2"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={
+                    showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
+                  }
+                  className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-10 items-center justify-center"
+                >
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
+              </div>
             </label>
 
             {(validationError || login.isError) && (

@@ -1,22 +1,18 @@
+import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Loader2, MapPinned, Navigation, PackageCheck } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 import StopCard from '#/components/StopCard'
 import RouteStatusBadge from '#/components/RouteStatusBadge'
+import RouteCompletedSummary from '#/components/RouteCompletedSummary'
 import { useActiveRoute, useRouteActions } from '#/hooks/useActiveRoute'
-import { ROUTE_TYPE_COPY } from '#/domain/route'
+import { ROUTE_TYPE_COPY, isStopUnresolved } from '#/domain/route'
 import { ApiError } from '#/lib/http'
 import type { RoutePrimitives } from '#/domain/route'
 
 export const Route = createFileRoute('/_authed/')({
   component: ActiveRoutePage,
 })
-
-// Mirrors backend RouteStop.isTerminal: only DELIVERED/RETURNED are done —
-// FAILED still needs a retry, so it must still count as unresolved.
-function isUnresolved(status: RoutePrimitives['stops'][number]['status']): boolean {
-  return status === 'PENDING' || status === 'FAILED'
-}
 
 function getErrorMessage(error: unknown): string {
   return error instanceof ApiError
@@ -26,7 +22,7 @@ function getErrorMessage(error: unknown): string {
 
 function buildGoogleMapsUrl(route: RoutePrimitives): string | null {
   const pendingStops = route.stops
-    .filter((stop) => isUnresolved(stop.status))
+    .filter((stop) => isStopUnresolved(stop.status))
     .sort((a, b) => a.stopOrder - b.stopOrder)
 
   const coords = pendingStops
@@ -56,6 +52,20 @@ function buildGoogleMapsUrl(route: RoutePrimitives): string | null {
 function ActiveRoutePage() {
   const { data: route, isLoading, isError } = useActiveRoute()
   const { startRoute, completeRoute } = useRouteActions()
+  // Snapshot of the route at the moment it was completed: the backend stops
+  // returning it as "active", so this is what feeds the success screen.
+  const [completedRoute, setCompletedRoute] = useState<RoutePrimitives | null>(
+    null,
+  )
+
+  if (completedRoute) {
+    return (
+      <RouteCompletedSummary
+        route={completedRoute}
+        onDismiss={() => setCompletedRoute(null)}
+      />
+    )
+  }
 
   if (isLoading) {
     return (
@@ -86,20 +96,22 @@ function ActiveRoutePage() {
     )
   }
 
-  const sortedStops = [...route.stops].sort(
-    (a, b) => a.stopOrder - b.stopOrder,
-  )
+  const sortedStops = [...route.stops].sort((a, b) => a.stopOrder - b.stopOrder)
   const pendingCount = sortedStops.filter(
     (stop) => stop.status === 'PENDING',
   ).length
   const unresolvedCount = sortedStops.filter((stop) =>
-    isUnresolved(stop.status),
+    isStopUnresolved(stop.status),
   ).length
   const deliveredCount = sortedStops.filter(
     (stop) => stop.status === 'DELIVERED',
   ).length
   const mapsUrl = buildGoogleMapsUrl(route)
   const copy = ROUTE_TYPE_COPY[route.type]
+
+  const showStickyAction =
+    route.status === 'PLANNED' ||
+    (route.status === 'ACTIVE' && unresolvedCount === 0)
 
   return (
     <div className="flex flex-col gap-4">
@@ -114,42 +126,17 @@ function ActiveRoutePage() {
             {pendingCount} pendientes
           </p>
 
-          <div className="flex flex-col gap-2">
-            {route.status === 'PLANNED' && (
-              <button
-                type="button"
-                disabled={startRoute.isPending}
-                onClick={() => startRoute.mutate(route.id)}
-                className="bg-primary text-primary-foreground h-11 rounded-md text-sm font-semibold disabled:opacity-60"
-              >
-                {startRoute.isPending ? 'Iniciando…' : 'Iniciar ruta'}
-              </button>
-            )}
-
-            {route.status === 'ACTIVE' && mapsUrl && (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="border-border text-foreground flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold"
-              >
-                <Navigation className="size-4" />
-                Navegar con Google Maps
-              </a>
-            )}
-
-            {route.status === 'ACTIVE' && unresolvedCount === 0 && (
-              <button
-                type="button"
-                disabled={completeRoute.isPending}
-                onClick={() => completeRoute.mutate(route.id)}
-                className="bg-success text-success-foreground flex h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold disabled:opacity-60"
-              >
-                <PackageCheck className="size-4" />
-                {completeRoute.isPending ? 'Finalizando…' : 'Finalizar ruta'}
-              </button>
-            )}
-          </div>
+          {route.status === 'ACTIVE' && mapsUrl && (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="border-border text-foreground flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-semibold"
+            >
+              <Navigation className="size-4" />
+              Navegar con Google Maps
+            </a>
+          )}
 
           {(startRoute.isError || completeRoute.isError) && (
             <p className="text-destructive text-sm" role="alert">
@@ -173,6 +160,39 @@ function ActiveRoutePage() {
           />
         ))}
       </section>
+
+      {showStickyAction && (
+        <>
+          {/* Spacer so the last stop card isn't hidden behind the floating button */}
+          <div aria-hidden className="h-14" />
+          <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 mx-auto w-full max-w-md px-4">
+            {route.status === 'PLANNED' ? (
+              <button
+                type="button"
+                disabled={startRoute.isPending}
+                onClick={() => startRoute.mutate(route.id)}
+                className="bg-primary text-primary-foreground h-12 w-full rounded-md text-sm font-semibold shadow-lg disabled:opacity-60"
+              >
+                {startRoute.isPending ? 'Iniciando…' : 'Iniciar ruta'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={completeRoute.isPending}
+                onClick={() =>
+                  completeRoute.mutate(route.id, {
+                    onSuccess: () => setCompletedRoute(route),
+                  })
+                }
+                className="bg-success text-success-foreground flex h-12 w-full items-center justify-center gap-2 rounded-md text-sm font-semibold shadow-lg disabled:opacity-60"
+              >
+                <PackageCheck className="size-4" />
+                {completeRoute.isPending ? 'Finalizando…' : 'Finalizar ruta'}
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
