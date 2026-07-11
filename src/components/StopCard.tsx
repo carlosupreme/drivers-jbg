@@ -3,6 +3,8 @@ import { Camera, MapPin } from 'lucide-react'
 import { Card, CardContent } from '#/components/ui/card'
 import { StopStatusBadge } from '#/components/RouteStatusBadge'
 import { SignaturePad } from '#/components/SignaturePad'
+import AttemptResultOverlay from '#/components/AttemptResultOverlay'
+import type { AttemptResult } from '#/components/AttemptResultOverlay'
 import { useRouteActions } from '#/hooks/useActiveRoute'
 import { ApiError } from '#/lib/http'
 import {
@@ -87,6 +89,7 @@ export default function StopCard({
   const [photo, setPhoto] = useState<File | null>(null)
   const [signature, setSignature] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const [attemptResult, setAttemptResult] = useState<AttemptResult | null>(null)
 
   const attemptsUsed = stop.attempts.length
   // Terminal statuses (mirrors backend RouteStop.isTerminal) are DELIVERED and
@@ -139,6 +142,11 @@ export default function StopCard({
           setPhoto(null)
           setReason('')
           setSignature(null)
+          setAttemptResult({
+            outcome,
+            attemptNumber: attemptsUsed + 1,
+            reason: outcome === 'FAILED' ? reason.trim() : undefined,
+          })
         },
         onError: (error) => {
           console.error('[StopCard] recordAttempt failed', {
@@ -166,7 +174,9 @@ export default function StopCard({
               {stop.stopOrder}
             </span>
             <div>
-              <p className="text-muted-foreground text-xs">{copy.addressHint}:</p>
+              <p className="text-muted-foreground text-xs">
+                {copy.addressHint}:
+              </p>
               <p className="text-sm font-medium leading-snug">
                 {formatStopAddress(stop.address) || 'Dirección no disponible'}
               </p>
@@ -278,6 +288,15 @@ export default function StopCard({
               </button>
             </div>
           </form>
+        )}
+
+        {attemptResult && (
+          <AttemptResultOverlay
+            result={attemptResult}
+            stop={stop}
+            routeType={routeType}
+            onDismiss={() => setAttemptResult(null)}
+          />
         )}
       </CardContent>
     </Card>
